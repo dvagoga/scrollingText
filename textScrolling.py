@@ -1,88 +1,96 @@
 from tkinter import *
 import time
 
-gl = ['у', 'е', 'э', 'о', 'а', 'ы', 'я', 'и', 'ю']
+firstWindowLength = 5
+middleWindowLength = 1
+lastWindowLength = 20
 
-class st:
-    currentWord = 0
-    allWords = []
+gl = ['у', 'е', 'э', 'о', 'а', 'ы', 'я', 'и', 'ю', 'У', 'Е', 'Э', 'О', 'А', 'Ы', 'Я', 'И', 'Ю']
+
+class console:
+    sign = []
     delayTimeIndex = 0
-    #delayTimeValue = [2000, 1000, 500, 250, 125, 62, 31, 15, 7]
-    delayTimeValue = [2000, 500, 400, 300, 200, 175, 150, 125, 100]
-    def init(self):
-        self.currentWord = 0
-        self.delayTimeIndex = 0
-        targetFile = open('testText.txt', 'r')
-        fileLines = targetFile.readlines()
-        targetFile.close()
-        for line in fileLines:
-            words = line.split()
-            for word in words:
-                self.allWords.append(word)
-    def getWord(self):
-        if self.currentWord < len(self.allWords):
-            self.currentWord += 1
-        return self.allWords[self.currentWord]#, self.tt[self.s+1], self.tt[self.s+2]
-    def stopSpeed(self):
-        self.delayTimeIndex = 0
+    delayTimeValue = [1000, 500, 400, 300, 200, 175, 150, 125, 100]
     def reduceSpeed(self):
         if self.delayTimeIndex > 0:
             self.delayTimeIndex -= 1
-        else:
-            if self.currentWord != 1:
-                self.currentWord -= 1
     def increaseSpeed(self):
         if self.delayTimeIndex < (len(self.delayTimeValue)-1):
             self.delayTimeIndex += 1
     def delayTime(self):
         return self.delayTimeValue[self.delayTimeIndex]
+    def outputWord(self, wordToDisplay, charColors):
+        wordLength = len(wordToDisplay)
+        for i in range(len(self.sign)):
+            self.sign[i].destroy()
+        self.sign = [Label(font='courier 20 bold', borderwidth = 0, width = 1, fg = charColors[i], text = wordToDisplay[i]) for i in range(wordLength)]
+        for i in range(wordLength):
+            self.sign[i].pack(side = 'left')
 
-ss = st()
-ss.init()
+class state:
+    indexWord = 0
+    mode = 'stp'
+    def nextWord(self):
+        self.indexWord += 1
+    def previousWord(self):
+        if self.indexWord > 0:
+            self.indexWord -= 1
+    def setMode(self, event):
+        if self.mode == 'stp':
+            self.mode = 'go'
+            f.after(1, reading)
+        else:
+            self.mode = 'stp'
+    def getMode(self):
+        return self.mode
+
+reedText = console()
+readControl = state()
+allWords = []
+targetFile = open('testText.txt', 'r')
+fileLines = targetFile.readlines()
+targetFile.close()
+for line in fileLines:
+    words = line.split()
+    for word in words:
+        allWords.append(word)
 root=Tk()
 
 def speedControl(event):
     d = event.delta
-    if d < 0:
-        ss.increaseSpeed()
+    if readControl.getMode() == 'stp':
+        if d < 0:
+            readControl.nextWord()
+            f.after(1, reading)
+        else:
+            readControl.previousWord()
+            f.after(1, reading)
     else:
-        ss.reduceSpeed()
+        if d < 0:
+            reedText.increaseSpeed()
+        else:
+            reedText.reduceSpeed()
 
 def reading():    
-    word = "  " + ss.getWord()
-    spaceNum = 0
-    if len(word) % 2 == 0:
-        spaceNum = len(word)//2
-    else:
-        spaceNum = (len(word)+1)//2
+    global allWords
+    word = allWords[readControl.indexWord]
+    wordLength = len(word)
+    colors = ['black' for i in range(wordLength)]
+    colors[0] = 'red'
+    if wordLength > 2:
+        colors[wordLength-1] = 'red'
+    if wordLength > 6:
+        colors[1] = 'red'
+        colors[wordLength-2] = 'red'
+        colors[wordLength-1] = 'red'
+    reedText.outputWord(word, colors)
+    if readControl.getMode() != 'stp':
+        readControl.nextWord()
+        f.after(reedText.delayTime(), reading)
 
-    #check = False
-    #while not check:
-    #    if word[spaceNum] in gl:
-    #        check = True
-    #    else:
-    #        if spaceNum == (len(word) - 1):
-    #            check = True
-    #        else:
-    #            spaceNum += 1
-
-    l['text'] = word[:spaceNum]
-    l2['text'] = word[spaceNum]
-    l3['text'] = word[spaceNum+1:]
-    l.after(ss.delayTime(), reading)
-
-
-
-def stp(event):
-    ss.stopSpeed()
-
-l = Label(font='courier 20 bold', borderwidth = 0, width = 10, anchor= E)
-l.pack(side = 'left')
-l2 = Label(font='courier 20 bold', borderwidth = 0,  width = 1, fg = 'red', bg = 'gray')
-l2.pack(side = 'left')
-l3 = Label(font='courier 20 bold', borderwidth = 0, width = 15, anchor= W,)
-l3.pack(side = 'left')
-l.after_idle(reading)
+reedText.outputWord('stopped', ['red', 'red', 'red', 'red', 'red', 'red', 'red',])
+f = Frame(root, width=100, heigh=100, bg='green', bd=5)
+f.after_idle(reading)
 root.bind("<MouseWheel>", speedControl)
-root.bind("<ButtonPress-1>", stp)
+root.bind("<ButtonPress-1>", readControl.setMode)
 root.mainloop()
